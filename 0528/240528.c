@@ -22,9 +22,9 @@ void write_log(pid_t pid, int count, const char *reason) {
     time_str[strlen(time_str) - 1] = '\0';  // Remove newline character
 
     if (count != -1) {
-        dprintf(fd, "%-7d %-7d %-30s %s\n", pid, count, time_str, reason);
+        dprintf(fd, "%-7d %-30s %s\n", pid, time_str, reason);
     } else {
-        dprintf(fd, "%-7d %-7s %-30s %s\n", pid, "", time_str, reason);
+        dprintf(fd, "%-7d %-30s %s\n", pid, time_str, reason);
     }
 
     close(fd);
@@ -49,7 +49,7 @@ void child_process() {
 
     for (int i = 0; i < 5; i++) {
         printf("I am a child\n");
-        write_log(getpid(), i + 1, "running");
+        //write_log(getpid(), i + 1, "exit");
         sleep(1);
     }
 
@@ -60,11 +60,11 @@ void child_process() {
 
     for (int i = 5; i < 10; i++) {
         printf("I am a child\n");
-        write_log(getpid(), i + 1, "running");
+        //write_log(getpid(), i + 1, "exit");
         sleep(1);
     }
 
-    write_log(getpid(), 10, "exit");
+    //write_log(getpid(), 10, "exit");
     exit(0);
 }
 
@@ -75,7 +75,7 @@ int main() {
         perror("open");
         exit(EXIT_FAILURE);
     }
-    dprintf(fd, "PID     COUNT   TIME                          REASON\n");
+    dprintf(fd, "PID     TIME                          REASON\n");
     close(fd);
 
     time_t start_time = time(NULL);
@@ -103,4 +103,3 @@ int main() {
 
     return 0;
 }
-
