@@ -8,31 +8,25 @@
 #include <sys/wait.h>
 
 #define LOG_FILE "log.txt"
-#define DURATION 180
 
-void write_log(pid_t pid, int count, const char *reason) {
+void write_log(pid_t pid, const char *time_str, const char *reason) {
     int fd = open(LOG_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd == -1) {
         perror("open");
         exit(EXIT_FAILURE);
     }
 
-    time_t now = time(NULL);
-    char *time_str = ctime(&now);
-    time_str[strlen(time_str) - 1] = '\0';  // Remove newline character
-
-    if (count != -1) {
-        dprintf(fd, "%-7d %-30s %s\n", pid, time_str, reason);
-    } else {
-        dprintf(fd, "%-7d %-30s %s\n", pid, time_str, reason);
-    }
-
+    dprintf(fd, "%-7d %-30s %s\n", pid, time_str, reason);
     close(fd);
 }
 
 void handle_sigint(int sig) {
+    time_t now = time(NULL);
+    char *time_str = ctime(&now);
+    time_str[strlen(time_str) - 1] = '\0';  // Remove newline character
+
     printf("bye~\nwriting...\n");
-    write_log(getpid(), -1, "signal(bye~)");
+    write_log(getpid(), time_str, "signal(bye~)");
     exit(0);
 }
 
@@ -49,7 +43,6 @@ void child_process() {
 
     for (int i = 0; i < 5; i++) {
         printf("I am a child\n");
-        //write_log(getpid(), i + 1, "exit");
         sleep(1);
     }
 
@@ -60,11 +53,14 @@ void child_process() {
 
     for (int i = 5; i < 10; i++) {
         printf("I am a child\n");
-        //write_log(getpid(), i + 1, "exit");
         sleep(1);
     }
 
-    //write_log(getpid(), 10, "exit");
+    time_t now = time(NULL);
+    char *time_str = ctime(&now);
+    time_str[strlen(time_str) - 1] = '\0';  // Remove newline character
+
+    write_log(getpid(), time_str, "exit");
     exit(0);
 }
 
@@ -78,28 +74,30 @@ int main() {
     dprintf(fd, "PID     TIME                          REASON\n");
     close(fd);
 
-    time_t start_time = time(NULL);
-    while (time(NULL) - start_time < DURATION) {
-        pid_t pid = fork();
-        if (pid < 0) {
-            perror("fork");
-            exit(EXIT_FAILURE);
-        }
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
 
-        if (pid == 0) {
-            child_process();
+    if (pid == 0) {
+        child_process();
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+        time_t now = time(NULL);
+        char *time_str = ctime(&now);
+        time_str[strlen(time_str) - 1] = '\0';  // Remove newline character
+
+        if (WIFEXITED(status)) {
+            printf("Child exited with status %d\n", WEXITSTATUS(status));
+            write_log(pid, time_str, "exit");
         } else {
-            int status;
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status)) {
-                printf("Child exited with status %d\n", WEXITSTATUS(status));
-                write_log(pid, -1, "exit");
-            } else {
-                printf("Child did not exit successfully\n");
-                write_log(pid, -1, "signal");
-            }
+            printf("Child did not exit successfully\n");
+            write_log(pid, time_str, "signal");
         }
     }
 
     return 0;
 }
+
